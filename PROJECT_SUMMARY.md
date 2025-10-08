@@ -15,10 +15,11 @@ A **full-featured Python-based MCP (Model Context Protocol) server** for ethical
    - `generate_ethical_guidelines` - Custom guideline generation
    - `assess_transparency` - Explainability assessment
 
-2. **6 Knowledge Resources**
+2. **Expanded Knowledge Resources**
    - Complete ethical frameworks database
    - AI ethics guidelines
-   - Individual framework details (Utilitarian, Deontological, Virtue, Care)
+   - Individual framework details (Utilitarian, Deontological, Virtue, Social Contract)
+   - Responsible AI frameworks (OECD, EU HLEG, Australia, NIST, Microsoft, additional references)
 
 3. **3 Guided Prompts**
    - Structured ethical decision-making
@@ -31,7 +32,10 @@ A **full-featured Python-based MCP (Model Context Protocol) server** for ethical
   - Utilitarian Ethics
   - Deontological Ethics
   - Virtue Ethics
-  - Ethics of Care
+  - Social Contract Theory (Rawlsian/Scanlonian)
+
+- **Responsible AI Framework Library**
+  - OECD AI Principles, EU HLEG Guidelines, Australia's AI Ethics Principles, NIST AI RMF, Microsoft Responsible AI Principles, plus notable global references
 
 - **8 AI Ethics Principles**
   - Fairness
@@ -48,6 +52,7 @@ A **full-featured Python-based MCP (Model Context Protocol) server** for ethical
 - **MCP SDK Integration**: Full implementation using the official MCP Python SDK
 - **Stdio Transport**: Default transport for MCP clients like Claude Desktop
 - **HTTP Transport**: Streamable HTTP/SSE support (experimental)
+- **OpenAI-Backed Reasoning**: Tool responses generated via OpenAI (configurable model, requires `OPENAI_API_KEY`)
 - **Python 3.10+**: Modern Python with async/await
 - **Well-Structured**: Clean package architecture with proper entry points
 

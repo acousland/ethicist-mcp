@@ -8,8 +8,8 @@ This server provides tools, resources, and prompts for ethical AI analysis and g
 import asyncio
 import json
 import logging
+import os
 from typing import Any, Sequence
-from datetime import datetime
 
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
@@ -23,6 +23,7 @@ from mcp.types import (
     PromptMessage,
     GetPromptResult,
 )
+from openai import AsyncOpenAI
 from pydantic import AnyUrl
 
 # Configure logging
@@ -36,7 +37,7 @@ app = Server("ethicist-mcp")
 ETHICAL_FRAMEWORKS = {
     "utilitarian": {
         "name": "Utilitarian Ethics",
-        "description": "Focuses on maximizing overall happiness and well-being",
+        "description": "Focuses on maximising overall happiness and well-being",
         "key_principles": [
             "Greatest good for the greatest number",
             "Consequences matter most",
@@ -61,13 +62,13 @@ ETHICAL_FRAMEWORKS = {
             "Balance and moderation in all things"
         ]
     },
-    "care": {
-        "name": "Ethics of Care",
-        "description": "Emphasizes relationships, empathy, and contextual responses",
+    "social_contract": {
+        "name": "Social Contract Theory",
+        "description": "Centers on fairness and mutual justification grounded in Rawlsian contractualism and Scanlonian contractarianism",
         "key_principles": [
-            "Prioritize caring relationships",
-            "Consider emotional and relational impacts",
-            "Context-sensitive moral reasoning"
+            "Select principles that would be chosen under fair conditions, such as Rawls's veil of ignorance",
+            "Ensure decisions can be justified to every affected party, following Scanlon's notion of reasonable rejection",
+            "Promote equitable institutions and uphold agreed-upon obligations"
         ]
     }
 }
@@ -85,28 +86,318 @@ AI_ETHICS_GUIDELINES = {
 }
 
 
+RESPONSIBLE_AI_FRAMEWORKS = {
+    "oecd_ai_principles": {
+        "name": "OECD AI Principles",
+        "origin": (
+            "Adopted in 2019 and revised in 2024 by OECD member and partner countries as a "
+            "non-binding intergovernmental standard."
+        ),
+        "structure": (
+            "Five value-based principles for AI actors plus complementary "
+            "recommendations for public policy."
+        ),
+        "core_principles": [
+            {
+                "name": "Inclusive growth, sustainable development and well-being",
+                "description": (
+                    "AI should advance human and planetary well-being, reduce inequities, "
+                    "and promote sustainable development."
+                )
+            },
+            {
+                "name": "Respect for human rights and democratic values",
+                "description": (
+                    "Align AI with rule of law, fundamental rights, privacy, and the 2024 "
+                    "focus on countering mis/disinformation."
+                )
+            },
+            {
+                "name": "Transparency and explainability",
+                "description": (
+                    "Enable stakeholders to understand AI logic, data sources, "
+                    "limitations, and uncertainty."
+                )
+            },
+            {
+                "name": "Robustness, security and safety",
+                "description": (
+                    "Deliver resilient, secure systems with graceful degradation, "
+                    "override options, and lifecycle maintenance."
+                )
+            },
+            {
+                "name": "Accountability",
+                "description": (
+                    "Clarify responsibility for AI outcomes with risk management, "
+                    "auditability, traceability, and redress."
+                )
+            }
+        ],
+        "policy_recommendations": [
+            "Invest in AI research and development",
+            "Foster trustworthy AI ecosystems and interoperable governance",
+            "Strengthen human capacity and institutional readiness",
+            "Align with international cooperation and standards",
+            "Create enabling policy environments and infrastructure"
+        ],
+        "strengths": [
+            "Broad international consensus while remaining flexible",
+            "2024 update addresses generative AI, info integrity, and lifecycle controls"
+        ],
+        "challenges": [
+            "High-level principles require national implementation to operationalise",
+            "Tension points (privacy vs explainability, accountability vs autonomy) remain"
+        ]
+    },
+    "eu_trustworthy_ai_guidelines": {
+        "name": "EU Ethics Guidelines for Trustworthy AI",
+        "origin": (
+            "Developed by the European Commission's High-Level Expert Group on AI and "
+            "published in April 2019 as influential but non-binding guidance."
+        ),
+        "three_pillars": [
+            "Lawfulness: comply with applicable EU and member-state laws",
+            "Ethical alignment: respect fundamental rights and societal values",
+            "Robustness: maintain technical and social resilience across the lifecycle"
+        ],
+        "ethical_principles": [
+            {
+                "name": "Respect for human autonomy",
+                "description": (
+                    "Keep humans in control, avoid manipulation, and ensure oversight."
+                )
+            },
+            {
+                "name": "Prevention of harm",
+                "description": "Avoid and mitigate foreseeable physical, psychological, or social harm."
+            },
+            {
+                "name": "Fairness",
+                "description": "Promote justice, non-discrimination, equal opportunity, and redress."
+            },
+            {
+                "name": "Explicability",
+                "description": "Provide transparency, explainability, and contestability for stakeholders."
+            }
+        ],
+        "requirements": [
+            "Human agency and oversight",
+            "Technical robustness and safety",
+            "Privacy and data governance",
+            "Transparency",
+            "Diversity, non-discrimination, and fairness",
+            "Societal and environmental well-being",
+            "Accountability"
+        ],
+        "strengths": [
+            "Practical self-assessment checklists (e.g., ALTAI) enable adoption",
+            "Deep grounding in EU fundamental rights and emerging regulation"
+        ],
+        "challenges": [
+            "Implementation depends on organisations translating guidance into metrics",
+            "Trade-offs between requirements can be under-specified"
+        ]
+    },
+    "australia_ai_ethics_principles": {
+        "name": "Australia's AI Ethics Principles",
+        "origin": (
+            "Voluntary guidance published by the Australian Government for public and "
+            "private AI development, aligned with OECD norms."
+        ),
+        "principles": [
+            "Beneficial purpose",
+            "Safe and reliable",
+            "Transparency and explainability",
+            "Fairness",
+            "Privacy protection",
+            "Contestability",
+            "Accountability",
+            "Human, social, and environmental well-being"
+        ],
+        "notes": [
+            "Supported by a 2024 Voluntary AI Safety Standard with 10 guardrails",
+            "Government assurance frameworks map practices to these principles"
+        ],
+        "strengths": [
+            "Flexible, interoperable with global norms",
+            "Encourages translation into sector-specific assurance"
+        ],
+        "challenges": [
+            "Voluntary status can limit compliance",
+            "Requires additional tooling to measure and audit adherence"
+        ]
+    },
+    "nist_ai_rmf": {
+        "name": "NIST AI Risk Management Framework",
+        "origin": (
+            "Developed by the U.S. National Institute of Standards and Technology; AI RMF "
+            "1.0 released in 2023 with ongoing generative AI updates."
+        ),
+        "core_functions": [
+            {
+                "name": "Govern",
+                "description": "Establish roles, oversight, and accountability for AI risk."
+            },
+            {
+                "name": "Map",
+                "description": "Identify AI contexts, stakeholders, and potential harms."
+            },
+            {
+                "name": "Measure",
+                "description": "Assess risk likelihood and impact with appropriate metrics."
+            },
+            {
+                "name": "Manage",
+                "description": "Implement mitigations, monitor outcomes, and respond to incidents."
+            }
+        ],
+        "considerations": [
+            "Risk is context-dependent and evolves over the lifecycle",
+            "Transparency, fairness, robustness, and accountability underpin trustworthy AI",
+            "The NIST Playbook offers concrete actions and references"
+        ],
+        "strengths": [
+            "Process-oriented and adaptable to diverse domains",
+            "Widely referenced by industry (e.g., Microsoft Responsible AI)"
+        ],
+        "challenges": [
+            "Voluntary adoption can leave gaps, especially for smaller organisations",
+            "Quantifying social or ethical harms remains difficult"
+        ]
+    },
+    "microsoft_responsible_ai_principles": {
+        "name": "Microsoft Responsible AI Principles",
+        "origin": (
+            "Microsoft's internal and public commitments that guide AI product "
+            "development, supported by governance standards and tooling."
+        ),
+        "principles": [
+            "Fairness",
+            "Reliability and safety",
+            "Privacy and security",
+            "Inclusiveness",
+            "Transparency",
+            "Accountability"
+        ],
+        "operational_approach": [
+            "Align governance with the NIST AI RMF",
+            "Publish Transparency Notes documenting system limitations",
+            "Use internal tooling and policy gates to enforce standards"
+        ],
+        "strengths": [
+            "Concrete tooling and processes translate principles into practice",
+            "Demonstrates how a large organisation operationalises responsible AI"
+        ],
+        "challenges": [
+            "Organisation-specific perspective may miss domain nuances",
+            "Implementation gaps between stated principles and deployed systems"
+        ]
+    },
+    "responsible_ai_additional_references": {
+        "name": "Other Notable Responsible AI Frameworks",
+        "highlights": [
+            "IEEE Ethically Aligned Design and IEEE 7000 value-based engineering standards",
+            "Responsible AI Pattern Catalogue (CSIRO and research community) mapping principles to patterns",
+            "UN human-rights-centred AI proposals",
+            "Toronto Declaration emphasising equality and non-discrimination",
+            "Asilomar AI Principles articulating safety and long-term AI governance"
+        ]
+    }
+}
+
+
+OPENAI_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+SYSTEM_PROMPT = (
+    "You are the Ethicist MCP Server, an expert in responsible and ethical AI. "
+    "Respond in Australian English, provide well-structured Markdown output, and ground your guidance "
+    "in recognised ethical frameworks, responsible AI standards, and practical governance steps. "
+    "Always highlight stakeholder impacts, risk mitigation, and actionable recommendations."
+)
+_openai_client: AsyncOpenAI | None = None
+
+
+def _get_openai_client() -> AsyncOpenAI | None:
+    """Initialise and cache the OpenAI client if an API key is configured."""
+    global _openai_client
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        return None
+    if _openai_client is None:
+        _openai_client = AsyncOpenAI(api_key=api_key)
+    return _openai_client
+
+
+async def _generate_openai_response(subject: str, user_prompt: str, *, temperature: float = 0.7) -> str:
+    """
+    Generate a response from OpenAI with consistent formatting and graceful fallbacks.
+    
+    Args:
+        subject: Short description of the request for logging and fallback messaging.
+        user_prompt: The prompt delivered to the model.
+        temperature: Sampling temperature for creativity vs determinism.
+    """
+    client = _get_openai_client()
+    if client is None:
+        logger.warning("OpenAI API key not configured; returning fallback content for '%s'.", subject)
+        return (
+            "Warning: OpenAI API key not configured (set `OPENAI_API_KEY`).\n\n"
+            f"Requested content could not be generated automatically:\n{subject}\n\n"
+            "Provide a valid API key to enable AI-generated analyses."
+        )
+    
+    try:
+        response = await client.chat.completions.create(
+            model=OPENAI_MODEL,
+            temperature=temperature,
+            messages=[
+                {"role": "system", "content": SYSTEM_PROMPT},
+                {"role": "user", "content": user_prompt},
+            ],
+        )
+    except Exception as exc:  # pragma: no cover - network failures are runtime concerns
+        logger.error("Error calling OpenAI for '%s': %s", subject, exc, exc_info=True)
+        return (
+            "Warning: Encountered an error while contacting OpenAI.\n\n"
+            f"Subject: {subject}\nError: {exc}\n\n"
+            "Please retry later or review API credentials."
+        )
+    
+    message = response.choices[0].message if response.choices else None
+    content = getattr(message, "content", "") if message else ""
+    cleaned = content.strip() if content else ""
+    if not cleaned:
+        logger.warning("OpenAI returned an empty response for '%s'.", subject)
+        return (
+            "Warning: OpenAI returned an empty response.\n\n"
+            f"Subject: {subject}\n\n"
+            "Consider reissuing the request or adjusting the input context."
+        )
+    return cleaned
+
+
 @app.list_tools()
 async def list_tools() -> list[Tool]:
     """List all available ethical analysis tools."""
     return [
         Tool(
             name="analyze_ethical_scenario",
-            description="Analyze an ethical scenario using multiple ethical frameworks and provide comprehensive guidance",
+            description="Analyse an ethical scenario using multiple ethical frameworks and provide comprehensive guidance",
             inputSchema={
                 "type": "object",
                 "properties": {
                     "scenario": {
                         "type": "string",
-                        "description": "The ethical scenario or dilemma to analyze"
+                        "description": "The ethical scenario or dilemma to analyse"
                     },
                     "frameworks": {
                         "type": "array",
                         "items": {
                             "type": "string",
-                            "enum": ["utilitarian", "deontological", "virtue", "care"]
+                            "enum": ["utilitarian", "deontological", "virtue", "social_contract"]
                         },
                         "description": "Ethical frameworks to apply (default: all)",
-                        "default": ["utilitarian", "deontological", "virtue", "care"]
+                        "default": ["utilitarian", "deontological", "virtue", "social_contract"]
                     }
                 },
                 "required": ["scenario"]
@@ -159,7 +450,7 @@ async def list_tools() -> list[Tool]:
         ),
         Tool(
             name="generate_ethical_guidelines",
-            description="Generate customized ethical guidelines for a specific AI project or use case",
+            description="Generate customised ethical guidelines for a specific AI project or use case",
             inputSchema={
                 "type": "object",
                 "properties": {
@@ -213,27 +504,35 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | ImageCo
     
     if name == "analyze_ethical_scenario":
         scenario = arguments.get("scenario")
-        frameworks = arguments.get("frameworks", ["utilitarian", "deontological", "virtue", "care"])
+        if not scenario:
+            return [TextContent(type="text", text="Warning: The 'scenario' argument is required.")]
         
-        analysis = f"# Ethical Analysis of Scenario\n\n**Scenario:** {scenario}\n\n"
+        frameworks = arguments.get("frameworks", ["utilitarian", "deontological", "virtue", "social_contract"])
+        framework_blocks: list[str] = []
+        for key in frameworks:
+            framework = ETHICAL_FRAMEWORKS.get(key)
+            if framework:
+                principles = "\n".join(f"- {item}" for item in framework["key_principles"])
+                framework_blocks.append(
+                    f"### {framework['name']}\nDescription: {framework['description']}\nKey principles:\n{principles}"
+                )
+        frameworks_context = "\n\n".join(framework_blocks) if framework_blocks else "No recognised frameworks provided."
         
-        for framework_key in frameworks:
-            if framework_key in ETHICAL_FRAMEWORKS:
-                framework = ETHICAL_FRAMEWORKS[framework_key]
-                analysis += f"\n## {framework['name']}\n\n"
-                analysis += f"{framework['description']}\n\n"
-                analysis += "**Key Principles:**\n"
-                for principle in framework['key_principles']:
-                    analysis += f"- {principle}\n"
-                analysis += f"\n**Analysis:** This scenario should be evaluated considering whether it aligns with {framework['name'].lower()} principles, particularly focusing on {', '.join(framework['key_principles'][:2]).lower()}.\n"
+        user_prompt = (
+            f"Scenario:\n{scenario}\n\n"
+            f"Framework context:\n{frameworks_context}\n\n"
+            "Analyse the scenario using each framework. For every framework include:\n"
+            "- Core ethical focus and obligations\n"
+            "- Scenario-specific assessment referencing the listed principles\n"
+            "- Key risks, impacted stakeholders, and tension points\n"
+            "- Practical mitigation or decision guidance\n\n"
+            "Conclude with:\n"
+            "- Cross-framework synthesis highlighting convergences/divergences\n"
+            "- Actionable recommendations and governance checkpoints\n"
+            "- Risk register (high/medium/low) with monitoring cues."
+        )
         
-        analysis += "\n## Recommendations\n\n"
-        analysis += "1. Consider all stakeholders and their interests\n"
-        analysis += "2. Evaluate both short-term and long-term consequences\n"
-        analysis += "3. Ensure decisions respect human dignity and autonomy\n"
-        analysis += "4. Seek input from diverse perspectives\n"
-        analysis += "5. Document the reasoning process for accountability\n"
-        
+        analysis = await _generate_openai_response("Ethical scenario analysis", user_prompt)
         return [TextContent(type="text", text=analysis)]
     
     elif name == "evaluate_ai_system":
@@ -241,51 +540,40 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | ImageCo
         use_case = arguments.get("use_case")
         stakeholders = arguments.get("stakeholders", [])
         
-        evaluation = f"# AI System Ethical Evaluation\n\n"
-        evaluation += f"**System:** {system_desc}\n\n"
-        evaluation += f"**Use Case:** {use_case}\n\n"
+        if not system_desc or not use_case:
+            return [TextContent(type="text", text="Warning: 'system_description' and 'use_case' are required.")]
         
-        if stakeholders:
-            evaluation += f"**Stakeholders:** {', '.join(stakeholders)}\n\n"
+        guideline_summary = "\n".join(
+            f"- {key.replace('_', ' ').title()}: {value}"
+            for key, value in AI_ETHICS_GUIDELINES.items()
+        )
+        stakeholder_line = ", ".join(stakeholders) if stakeholders else "Not specified"
         
-        evaluation += "## Ethical Guidelines Assessment\n\n"
+        user_prompt = (
+            f"Evaluate the ethical posture of an AI system.\n\n"
+            f"System description: {system_desc}\n"
+            f"Use case: {use_case}\n"
+            f"Stakeholders: {stakeholder_line}\n\n"
+            "Reference guidelines and principles:\n"
+            f"{guideline_summary}\n\n"
+            "Produce a Markdown report with sections for each guideline. For every section include:\n"
+            "- Strengths currently observed or targeted\n"
+            "- Gaps or risks with severity ratings\n"
+            "- Mitigation actions, owners, and timelines\n"
+            "- Metrics or signals to monitor\n\n"
+            "After the per-guideline analysis provide:\n"
+            "- A consolidated risk heatmap\n"
+            "- Immediate, short-term, and long-term recommendations\n"
+            "- Governance artefacts needed (policies, audits, documentation)\n"
+            "- Stakeholder engagement plan."
+        )
         
-        for guideline, description in AI_ETHICS_GUIDELINES.items():
-            evaluation += f"### {guideline.replace('_', ' ').title()}\n"
-            evaluation += f"{description}\n\n"
-            evaluation += "**Assessment Questions:**\n"
-            
-            if guideline == "fairness":
-                evaluation += "- Does the system treat all user groups equitably?\n"
-                evaluation += "- Are there mechanisms to detect and mitigate bias?\n"
-            elif guideline == "transparency":
-                evaluation += "- Can users understand how decisions are made?\n"
-                evaluation += "- Is the system's logic documented and accessible?\n"
-            elif guideline == "accountability":
-                evaluation += "- Who is responsible for system failures?\n"
-                evaluation += "- Are there audit trails for decisions?\n"
-            elif guideline == "privacy":
-                evaluation += "- How is personal data collected and protected?\n"
-                evaluation += "- Are privacy-by-design principles followed?\n"
-            elif guideline == "safety":
-                evaluation += "- What safeguards prevent harmful outcomes?\n"
-                evaluation += "- How are edge cases and failures handled?\n"
-            
-            evaluation += "\n"
-        
-        evaluation += "## Recommendations\n\n"
-        evaluation += "- Conduct regular ethical audits\n"
-        evaluation += "- Establish an AI ethics review board\n"
-        evaluation += "- Implement continuous monitoring for bias and fairness\n"
-        evaluation += "- Provide clear documentation and user education\n"
-        
+        evaluation = await _generate_openai_response("AI system ethical evaluation", user_prompt)
         return [TextContent(type="text", text=evaluation)]
     
     elif name == "check_bias":
         context = arguments.get("context")
         bias_types = arguments.get("bias_types", ["selection", "confirmation", "algorithmic", "representation", "measurement"])
-        
-        report = f"# Bias Assessment Report\n\n**Context:** {context}\n\n"
         
         bias_descriptions = {
             "selection": "Occurs when the data sample is not representative of the population",
@@ -295,31 +583,27 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | ImageCo
             "measurement": "Errors in how variables are defined and measured"
         }
         
-        report += "## Bias Types to Check\n\n"
-        for bias_type in bias_types:
-            if bias_type in bias_descriptions:
-                report += f"### {bias_type.title()} Bias\n"
-                report += f"{bias_descriptions[bias_type]}\n\n"
-                report += "**Mitigation Strategies:**\n"
-                
-                if bias_type == "selection":
-                    report += "- Use stratified sampling to ensure representation\n"
-                    report += "- Validate data against known population distributions\n"
-                elif bias_type == "algorithmic":
-                    report += "- Test algorithm performance across different groups\n"
-                    report += "- Use fairness-aware machine learning techniques\n"
-                elif bias_type == "representation":
-                    report += "- Ensure diverse data collection\n"
-                    report += "- Include underrepresented groups in testing\n"
-                
-                report += "\n"
+        if not context:
+            return [TextContent(type="text", text="Warning: The 'context' argument is required.")]
         
-        report += "## Action Items\n\n"
-        report += "1. Conduct thorough data audit\n"
-        report += "2. Implement bias detection metrics\n"
-        report += "3. Establish diverse review teams\n"
-        report += "4. Create feedback mechanisms for affected users\n"
+        bias_blocks = "\n".join(
+            f"- {bias_type.title()} bias: {bias_descriptions.get(bias_type, 'No definition available')}"
+            for bias_type in bias_types
+        )
         
+        user_prompt = (
+            f"Context for bias assessment:\n{context}\n\n"
+            f"Bias types to evaluate:\n{bias_blocks}\n\n"
+            "Deliver a structured bias risk assessment that includes:\n"
+            "- Diagnostic questions and tests for each bias type\n"
+            "- Evidence to collect or metrics to review\n"
+            "- Likely impacts on stakeholders and compliance obligations\n"
+            "- Concrete mitigation strategies (data, model, process, governance)\n"
+            "- Residual risk and monitoring plans\n"
+            "- Checklist for ongoing assurance."
+        )
+        
+        report = await _generate_openai_response("Bias assessment", user_prompt)
         return [TextContent(type="text", text=report)]
     
     elif name == "generate_ethical_guidelines":
@@ -327,154 +611,63 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | ImageCo
         risk_level = arguments.get("risk_level", "medium")
         regulations = arguments.get("regulations", [])
         
-        guidelines = f"# Ethical Guidelines for {project_type.title()} AI Project\n\n"
-        guidelines += f"**Risk Level:** {risk_level.upper()}\n\n"
+        if not project_type:
+            return [TextContent(type="text", text="Warning: The 'project_type' argument is required.")]
         
-        if regulations:
-            guidelines += f"**Applicable Regulations:** {', '.join(regulations)}\n\n"
+        regulations_line = ", ".join(regulations) if regulations else "None specified"
+        guideline_summary = "\n".join(
+            f"- {key.replace('_', ' ').title()}: {value}"
+            for key, value in AI_ETHICS_GUIDELINES.items()
+        )
         
-        guidelines += "## Core Ethical Principles\n\n"
+        user_prompt = (
+            f"Create ethical guidelines.\n\n"
+            f"Project type: {project_type}\n"
+            f"Risk level: {risk_level}\n"
+            f"Regulations or standards: {regulations_line}\n\n"
+            "Relevant ethical principles:\n"
+            f"{guideline_summary}\n\n"
+            "Output a Markdown guide containing:\n"
+            "- Executive summary with risk posture\n"
+            "- Principle-by-principle requirements with acceptance criteria\n"
+            "- Domain-specific considerations (reference regulations if provided)\n"
+            "- Roles and responsibilities matrix\n"
+            "- Implementation roadmap (immediate, near-term, long-term)\n"
+            "- Assurance activities (audits, evaluations, reporting)\n"
+            "- Stakeholder engagement and communication plan\n"
+            "- KPIs/metrics for ongoing monitoring."
+        )
         
-        # Add all core guidelines
-        for idx, (key, desc) in enumerate(AI_ETHICS_GUIDELINES.items(), 1):
-            guidelines += f"{idx}. **{key.replace('_', ' ').title()}:** {desc}\n"
-        
-        guidelines += "\n## Project-Specific Considerations\n\n"
-        
-        # Domain-specific guidelines
-        domain_specific = {
-            "healthcare": [
-                "Patient privacy and confidentiality (HIPAA compliance)",
-                "Clinical decision support transparency",
-                "Doctor-patient relationship preservation",
-                "Equitable access to care"
-            ],
-            "finance": [
-                "Fair lending practices",
-                "Transparent credit decisions",
-                "Financial inclusion",
-                "Regulatory compliance (SOX, PCI-DSS)"
-            ],
-            "education": [
-                "Student data protection (FERPA compliance)",
-                "Equal learning opportunities",
-                "Educator autonomy preservation",
-                "Developmental appropriateness"
-            ],
-            "criminal justice": [
-                "Presumption of innocence",
-                "Due process rights",
-                "Bias prevention in risk assessment",
-                "Transparency in sentencing recommendations"
-            ]
-        }
-        
-        project_lower = project_type.lower()
-        for domain, considerations in domain_specific.items():
-            if domain in project_lower:
-                for consideration in considerations:
-                    guidelines += f"- {consideration}\n"
-                break
-        else:
-            guidelines += "- Identify domain-specific ethical concerns\n"
-            guidelines += "- Consult with subject matter experts\n"
-            guidelines += "- Review relevant industry standards\n"
-        
-        guidelines += "\n## Implementation Checklist\n\n"
-        guidelines += "- [ ] Establish ethics review board\n"
-        guidelines += "- [ ] Create ethical risk assessment process\n"
-        guidelines += "- [ ] Develop incident response plan\n"
-        guidelines += "- [ ] Implement continuous monitoring\n"
-        guidelines += "- [ ] Provide stakeholder training\n"
-        guidelines += "- [ ] Document all ethical decisions\n"
-        
-        if risk_level in ["high", "critical"]:
-            guidelines += "- [ ] Conduct third-party ethical audit\n"
-            guidelines += "- [ ] Establish public transparency reports\n"
-            guidelines += "- [ ] Create external advisory board\n"
-        
-        return [TextContent(type="text", text=guidelines)]
+        guidelines_text = await _generate_openai_response("Project ethical guidelines", user_prompt)
+        return [TextContent(type="text", text=guidelines_text)]
     
     elif name == "assess_transparency":
         system_type = arguments.get("system_type")
-        explanation_method = arguments.get("explanation_method", "None specified")
+        explanation_method = arguments.get("explanation_method")
         stakeholder_needs = arguments.get("stakeholder_needs", [])
         
-        assessment = f"# Transparency Assessment\n\n"
-        assessment += f"**System Type:** {system_type}\n"
-        assessment += f"**Explanation Method:** {explanation_method}\n\n"
+        if not system_type:
+            return [TextContent(type="text", text="Warning: The 'system_type' argument is required.")]
         
-        if stakeholder_needs:
-            assessment += f"**Stakeholder Groups:** {', '.join(stakeholder_needs)}\n\n"
+        explanation_line = explanation_method or "Not specified"
+        stakeholders_line = ", ".join(stakeholder_needs) if stakeholder_needs else "Not specified"
         
-        assessment += "## Transparency Dimensions\n\n"
+        user_prompt = (
+            "Prepare a transparency and explainability assessment.\n\n"
+            f"System type: {system_type}\n"
+            f"Explanation method: {explanation_line}\n"
+            f"Stakeholder needs: {stakeholders_line}\n\n"
+            "Address the following:\n"
+            "- Transparency objectives for each stakeholder group\n"
+            "- Current explanation techniques and their adequacy\n"
+            "- Gaps in comprehensibility, documentation, or tooling\n"
+            "- Risks related to opacity, misinterpretation, or misuse\n"
+            "- Recommendations for improving transparency (technical, process, communication)\n"
+            "- Evidence required for regulatory or assurance purposes\n"
+            "- Plan for monitoring transparency effectiveness over time."
+        )
         
-        assessment += "### 1. Input Transparency\n"
-        assessment += "- What data is collected?\n"
-        assessment += "- How is data preprocessed?\n"
-        assessment += "- Are data sources disclosed?\n\n"
-        
-        assessment += "### 2. Process Transparency\n"
-        assessment += "- Can the decision-making process be explained?\n"
-        assessment += "- Are algorithmic steps documented?\n"
-        assessment += "- Is the model architecture understandable?\n\n"
-        
-        assessment += "### 3. Output Transparency\n"
-        assessment += "- Are confidence levels provided?\n"
-        assessment += "- Can predictions be justified?\n"
-        assessment += "- Are alternative outcomes shown?\n\n"
-        
-        assessment += "### 4. Performance Transparency\n"
-        assessment += "- Are accuracy metrics disclosed?\n"
-        assessment += "- Are limitations clearly stated?\n"
-        assessment += "- Are failure modes documented?\n\n"
-        
-        assessment += "## Explainability Techniques\n\n"
-        
-        techniques = {
-            "neural network": ["LIME", "SHAP", "Attention visualization", "Layer-wise relevance propagation"],
-            "decision tree": ["Tree visualization", "Feature importance", "Decision paths"],
-            "LLM": ["Prompt engineering", "Chain-of-thought", "Attribution methods", "Attention weights"],
-            "ensemble": ["Feature importance", "Partial dependence plots", "Individual predictions"]
-        }
-        
-        system_lower = system_type.lower()
-        for sys_type, methods in techniques.items():
-            if sys_type in system_lower:
-                assessment += f"**Recommended for {system_type}:**\n"
-                for method in methods:
-                    assessment += f"- {method}\n"
-                assessment += "\n"
-                break
-        
-        assessment += "## Stakeholder-Specific Recommendations\n\n"
-        
-        stakeholder_recommendations = {
-            "users": "Provide simple, jargon-free explanations of how the system affects them",
-            "developers": "Maintain comprehensive technical documentation and model cards",
-            "regulators": "Ensure audit trails and compliance documentation",
-            "executives": "Create high-level summaries of system capabilities and limitations",
-            "affected parties": "Offer clear information about data use and decision appeals"
-        }
-        
-        if stakeholder_needs:
-            for stakeholder in stakeholder_needs:
-                stakeholder_lower = stakeholder.lower()
-                for key, recommendation in stakeholder_recommendations.items():
-                    if key in stakeholder_lower:
-                        assessment += f"**{stakeholder}:** {recommendation}\n\n"
-                        break
-        else:
-            for stakeholder, recommendation in stakeholder_recommendations.items():
-                assessment += f"**{stakeholder.title()}:** {recommendation}\n\n"
-        
-        assessment += "## Action Items\n\n"
-        assessment += "1. Implement appropriate explainability techniques\n"
-        assessment += "2. Create documentation for different audiences\n"
-        assessment += "3. Establish user feedback mechanisms\n"
-        assessment += "4. Conduct transparency audits\n"
-        assessment += "5. Provide training on system interpretation\n"
-        
+        assessment = await _generate_openai_response("Transparency assessment", user_prompt)
         return [TextContent(type="text", text=assessment)]
     
     else:
@@ -484,7 +677,7 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | ImageCo
 @app.list_resources()
 async def list_resources() -> list[Resource]:
     """List available ethical resources."""
-    return [
+    resources: list[Resource] = [
         Resource(
             uri=AnyUrl("ethicist://frameworks/all"),
             name="Ethical Frameworks",
@@ -516,12 +709,33 @@ async def list_resources() -> list[Resource]:
             description="Virtue ethics framework details"
         ),
         Resource(
-            uri=AnyUrl("ethicist://frameworks/care"),
-            name="Ethics of Care",
+            uri=AnyUrl("ethicist://frameworks/social_contract"),
+            name="Social Contract Theory",
             mimeType="application/json",
-            description="Ethics of care framework details"
+            description="Social contract theory framework details rooted in Rawlsian and Scanlonian perspectives"
+        ),
+        Resource(
+            uri=AnyUrl("ethicist://frameworks/responsible_ai"),
+            name="Responsible AI Frameworks Overview",
+            mimeType="application/json",
+            description="Aggregated view of OECD, EU, Australia, NIST, Microsoft, and related responsible AI frameworks"
         )
     ]
+
+    for key, data in RESPONSIBLE_AI_FRAMEWORKS.items():
+        resources.append(
+            Resource(
+                uri=AnyUrl(f"ethicist://frameworks/{key}"),
+                name=data.get("name", key.replace("_", " ").title()),
+                mimeType="application/json",
+                description=data.get(
+                    "origin",
+                    "Detailed reference material for responsible AI frameworks"
+                )
+            )
+        )
+
+    return resources
 
 
 @app.read_resource()
@@ -537,10 +751,13 @@ async def read_resource(uri: AnyUrl) -> str:
     
     elif uri_str.startswith("ethicist://frameworks/"):
         framework_key = uri_str.split("/")[-1]
+        if framework_key == "responsible_ai":
+            return json.dumps(RESPONSIBLE_AI_FRAMEWORKS, indent=2)
         if framework_key in ETHICAL_FRAMEWORKS:
             return json.dumps(ETHICAL_FRAMEWORKS[framework_key], indent=2)
-        else:
-            raise ValueError(f"Unknown framework: {framework_key}")
+        if framework_key in RESPONSIBLE_AI_FRAMEWORKS:
+            return json.dumps(RESPONSIBLE_AI_FRAMEWORKS[framework_key], indent=2)
+        raise ValueError(f"Unknown framework: {framework_key}")
     
     else:
         raise ValueError(f"Unknown resource URI: {uri_str}")
@@ -563,7 +780,7 @@ async def list_prompts() -> list[Prompt]:
         ),
         Prompt(
             name="stakeholder_analysis",
-            description="Help analyze and consider all stakeholders affected by a decision",
+            description="Help analyse and consider all stakeholders affected by a decision",
             arguments=[
                 {
                     "name": "decision",
@@ -607,7 +824,7 @@ async def get_prompt(name: str, arguments: dict[str, str] | None) -> GetPromptRe
                         type="text",
                         text=f"""I need help thinking through an ethical decision: {situation}
 
-Please help me analyze this using a structured approach:
+Please help me analyse this using a structured approach:
 
 1. **Clarify the Situation**
    - What are the key facts?
@@ -623,7 +840,7 @@ Please help me analyze this using a structured approach:
    - Utilitarian: What produces the greatest good?
    - Deontological: What are my duties and obligations?
    - Virtue Ethics: What would a person of good character do?
-   - Care Ethics: How can I maintain relationships and care for those affected?
+   - Social Contract: Would this decision be acceptable under fair terms to all affected parties?
 
 4. **Evaluate Options**
    - What are the possible courses of action?
@@ -651,9 +868,9 @@ Please guide me through this process."""
                     role="user",
                     content=TextContent(
                         type="text",
-                        text=f"""I need to analyze stakeholders for: {decision}
+                        text=f"""I need to analyse stakeholders for: {decision}
 
-Help me identify and analyze all stakeholders:
+Help me identify and analyse all stakeholders:
 
 1. **Direct Stakeholders** (immediately affected)
    - Who benefits directly from this decision?

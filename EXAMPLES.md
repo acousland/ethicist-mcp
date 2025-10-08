@@ -1,6 +1,6 @@
 # Ethicist MCP Server - Usage Examples
 
-This document provides practical examples of using the Ethicist MCP Server.
+This document provides practical examples of using the Ethicist MCP Server. Tool outputs are generated dynamically via OpenAI (configure `OPENAI_API_KEY` before replicating the responses).
 
 ## Table of Contents
 
@@ -13,7 +13,7 @@ This document provides practical examples of using the Ethicist MCP Server.
 
 ### 1. analyze_ethical_scenario
 
-Analyze ethical dilemmas using multiple philosophical frameworks.
+Analyse ethical dilemmas using multiple philosophical frameworks.
 
 **Example 1: Self-Driving Car Dilemma**
 ```json
@@ -31,8 +31,8 @@ Analyze ethical dilemmas using multiple philosophical frameworks.
 {
   "name": "analyze_ethical_scenario",
   "arguments": {
-    "scenario": "An AI system screens job applications and must decide whether to prioritize diversity or purely merit-based selection.",
-    "frameworks": ["utilitarian", "care"]
+    "scenario": "An AI system screens job applications and must decide whether to prioritise diversity or purely merit-based selection.",
+    "frameworks": ["utilitarian", "social_contract"]
   }
 }
 ```
@@ -58,7 +58,7 @@ Evaluate AI systems against ethical principles.
 {
   "name": "evaluate_ai_system",
   "arguments": {
-    "system_description": "A content recommendation algorithm for social media that maximizes user engagement",
+    "system_description": "A content recommendation algorithm for social media that maximises user engagement",
     "use_case": "Social media content curation and user experience",
     "stakeholders": ["users", "content creators", "advertisers", "platform owners"]
   }
@@ -93,7 +93,7 @@ Identify and assess potential biases in AI systems.
 
 ### 4. generate_ethical_guidelines
 
-Create customized ethical guidelines for specific projects.
+Create customised ethical guidelines for specific projects.
 
 **Example 1: Healthcare AI Project**
 ```json
@@ -112,7 +112,7 @@ Create customized ethical guidelines for specific projects.
 {
   "name": "generate_ethical_guidelines",
   "arguments": {
-    "project_type": "education personalized learning system",
+    "project_type": "education personalised learning system",
     "risk_level": "medium",
     "regulations": ["FERPA", "COPPA"]
   }
@@ -173,7 +173,14 @@ URI: ethicist://frameworks/all
 URI: ethicist://frameworks/utilitarian
 URI: ethicist://frameworks/deontological
 URI: ethicist://frameworks/virtue
-URI: ethicist://frameworks/care
+URI: ethicist://frameworks/social_contract
+URI: ethicist://frameworks/responsible_ai
+URI: ethicist://frameworks/oecd_ai_principles
+URI: ethicist://frameworks/eu_trustworthy_ai_guidelines
+URI: ethicist://frameworks/australia_ai_ethics_principles
+URI: ethicist://frameworks/nist_ai_rmf
+URI: ethicist://frameworks/microsoft_responsible_ai_principles
+URI: ethicist://frameworks/responsible_ai_additional_references
 ```
 
 **Get AI ethics guidelines:**
@@ -279,13 +286,13 @@ Assess ethical risks of AI systems.
 }
 ```
 
-**Step 2: Analyze Ethical Concerns**
+**Step 2: Analyse Ethical Concerns**
 ```json
 {
   "name": "analyze_ethical_scenario",
   "arguments": {
     "scenario": "The credit scoring model shows different approval rates for different demographic groups, even when controlling for creditworthiness indicators",
-    "frameworks": ["utilitarian", "deontological", "care"]
+    "frameworks": ["utilitarian", "deontological", "social_contract"]
   }
 }
 ```

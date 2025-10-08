@@ -12,11 +12,13 @@ The Ethicist MCP Server provides comprehensive tools, resources, and prompts for
 
 The server provides five powerful ethical analysis tools:
 
-1. **analyze_ethical_scenario** - Analyze ethical scenarios using multiple frameworks (Utilitarian, Deontological, Virtue Ethics, Ethics of Care)
+1. **analyze_ethical_scenario** - Analyse ethical scenarios using multiple frameworks (Utilitarian, Deontological, Virtue Ethics, Social Contract Theory)
 2. **evaluate_ai_system** - Evaluate AI systems against comprehensive ethical guidelines
 3. **check_bias** - Check for various types of bias in AI systems and data
-4. **generate_ethical_guidelines** - Generate customized ethical guidelines for specific projects
+4. **generate_ethical_guidelines** - Generate customised ethical guidelines for specific projects
 5. **assess_transparency** - Assess transparency and explainability of AI systems
+
+Each tool orchestrates a tailored prompt to OpenAI (default: `gpt-4o-mini`), producing structured Markdown analyses grounded in recognised responsible-AI frameworks.
 
 ### 📚 Resources
 
@@ -27,7 +29,14 @@ Access structured ethical knowledge through URI-based resources:
 - `ethicist://frameworks/utilitarian` - Utilitarian ethics details
 - `ethicist://frameworks/deontological` - Deontological ethics details
 - `ethicist://frameworks/virtue` - Virtue ethics details
-- `ethicist://frameworks/care` - Ethics of care details
+- `ethicist://frameworks/social_contract` - Social contract theory details
+- `ethicist://frameworks/responsible_ai` - Overview of responsible AI frameworks
+- `ethicist://frameworks/oecd_ai_principles` - OECD AI Principles (2019/2024)
+- `ethicist://frameworks/eu_trustworthy_ai_guidelines` - EU HLEG Guidelines for Trustworthy AI
+- `ethicist://frameworks/australia_ai_ethics_principles` - Australia's AI Ethics Principles
+- `ethicist://frameworks/nist_ai_rmf` - NIST AI Risk Management Framework
+- `ethicist://frameworks/microsoft_responsible_ai_principles` - Microsoft Responsible AI Principles
+- `ethicist://frameworks/responsible_ai_additional_references` - Other notable responsible AI references
 
 ### 💭 Prompts
 
@@ -44,6 +53,7 @@ Structured prompts to guide ethical reasoning:
 - Python 3.10 or higher
 - pip package manager
 - [uv](https://docs.astral.sh/uv/) CLI (optional, recommended for environment management)
+- OpenAI account with an API key stored in `OPENAI_API_KEY`
 
 ### Install with uv (Recommended)
 
@@ -65,6 +75,13 @@ Once synced you can execute any script with isolated dependencies:
 ```bash
 uv run ethicist-mcp
 uv run python -m ethicist_mcp.server
+```
+
+Configure your OpenAI credentials before invoking any tool that relies on model output:
+
+```bash
+export OPENAI_API_KEY="sk-..."           # required
+export OPENAI_MODEL="gpt-4o-mini"       # optional override
 ```
 
 ### Install from Source with pip
@@ -150,7 +167,7 @@ If you have the package installed globally (e.g., via `pip install -e .`), you c
 
 ## Examples
 
-### Analyzing an Ethical Scenario
+### Analysing an Ethical Scenario
 
 ```python
 # Using the analyze_ethical_scenario tool
@@ -208,7 +225,7 @@ If you have the package installed globally (e.g., via `pip install -e .`), you c
 The server incorporates four major ethical frameworks:
 
 ### Utilitarian Ethics
-Focuses on maximizing overall happiness and well-being for the greatest number of people.
+Focuses on maximising overall happiness and well-being for the greatest number of people.
 
 ### Deontological Ethics
 Emphasizes duties, rules, and moral obligations regardless of consequences.
@@ -216,8 +233,26 @@ Emphasizes duties, rules, and moral obligations regardless of consequences.
 ### Virtue Ethics
 Focuses on character development and cultivating moral virtues.
 
-### Ethics of Care
-Emphasizes relationships, empathy, and context-sensitive responses.
+### Social Contract Theory
+Draws on Rawlsian contractualism and Scanlonian contractarianism to emphasize fairness, mutual justification, and principles that all affected parties can reasonably accept.
+
+### Responsible AI Frameworks
+We also catalog leading responsible AI governance frameworks so you can pull structured policy guidance directly in MCP clients:
+
+- **OECD AI Principles (2019/2024)** – International value-based guidance plus policy recommendations for trustworthy AI ecosystems.
+- **EU Ethics Guidelines for Trustworthy AI (HLEG)** – Three-pillar approach with seven operational requirements grounded in EU fundamental rights.
+- **Australia's AI Ethics Principles** – Eight voluntary principles complemented by a 2024 AI Safety Standard and assurance mappings.
+- **NIST AI Risk Management Framework** – Govern/Map/Measure/Manage lifecycle approach with a companion Playbook for implementation.
+- **Microsoft Responsible AI Principles** – Organisational governance translating fairness, transparency, and accountability into practice.
+- **Other References** – IEEE EAD/7000 standards, Responsible AI pattern catalogues, UN proposals, the Toronto Declaration, and the Asilomar principles.
+
+## Environment Variables
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `OPENAI_API_KEY` | Authentication token used for OpenAI requests (required for tool execution) | _unset_ |
+| `OPENAI_MODEL` | Preferred OpenAI model identifier | `gpt-4o-mini` |
+| `LOG_LEVEL` | Logging verbosity for the server | `INFO` |
 
 ## AI Ethics Guidelines
 
@@ -273,4 +308,4 @@ For issues, questions, or contributions, please use the GitHub issue tracker.
 
 ## Acknowledgments
 
-Built with the [Model Context Protocol](https://modelcontextprotocol.io/) SDK and inspired by ethical AI principles from leading organizations and researchers in the field.
+Built with the [Model Context Protocol](https://modelcontextprotocol.io/) SDK and inspired by ethical AI principles from leading organisations and researchers in the field.

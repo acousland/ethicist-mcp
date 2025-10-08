@@ -5,6 +5,7 @@ Run this to see example outputs from each tool.
 """
 
 import asyncio
+import os
 from ethicist_mcp.server import (
     list_tools,
     list_resources,
@@ -23,17 +24,20 @@ async def demo():
     print("ETHICIST MCP SERVER - INTERACTIVE DEMO")
     print("=" * 80)
     
+    if not os.getenv("OPENAI_API_KEY"):
+        print("Warning: OPENAI_API_KEY is not set. The demo will return fallback messages instead of AI-generated analyses.")
+    
     # Demo 1: Ethical Scenario Analysis
-    print("\n📊 DEMO 1: Analyzing an Ethical Scenario")
+    print("\n📊 DEMO 1: Analysing an Ethical Scenario")
     print("-" * 80)
-    scenario = "A hospital AI must prioritize patients for limited ICU beds during a pandemic"
+    scenario = "A hospital AI must prioritise patients for limited ICU beds during a pandemic"
     print(f"Scenario: {scenario}\n")
     
     result = await call_tool(
         name="analyze_ethical_scenario",
         arguments={
             "scenario": scenario,
-            "frameworks": ["utilitarian", "care"]
+            "frameworks": ["utilitarian", "social_contract"]
         }
     )
     print(result[0].text[:600] + "...\n")

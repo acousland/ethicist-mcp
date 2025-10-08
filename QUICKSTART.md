@@ -23,6 +23,15 @@ uv run python demo.py
 uv run python test_server.py
 ```
 
+## Configure OpenAI Access
+
+Set your credentials before running the tools:
+
+```bash
+export OPENAI_API_KEY="sk-..."
+# optional: export OPENAI_MODEL="gpt-4o-mini"
+```
+
 ## Basic Usage
 
 ### 1. Run the Server (Stdio Transport)
@@ -60,9 +69,9 @@ Then restart Claude Desktop and you'll have access to ethical analysis tools!
 
 Once connected to an MCP client, try these commands:
 
-**Analyze an ethical scenario:**
+**Analyse an ethical scenario:**
 ```
-Please analyze this ethical scenario using the ethicist server:
+Please analyse this ethical scenario using the ethicist server:
 "Should we deploy facial recognition in our office building?"
 ```
 

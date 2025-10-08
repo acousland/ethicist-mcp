@@ -63,11 +63,14 @@ Using a uv-managed environment:
 
 The server can be configured using environment variables:
 
-- `LOG_LEVEL` - Set logging level (default: INFO)
-  - Options: DEBUG, INFO, WARNING, ERROR, CRITICAL
+- `OPENAI_API_KEY` – Required to generate tool outputs via OpenAI.
+- `OPENAI_MODEL` – Optional override for the OpenAI model (default: `gpt-4o-mini`).
+- `LOG_LEVEL` – Set logging level (default: INFO, options: DEBUG, INFO, WARNING, ERROR, CRITICAL).
 
 Example:
 ```bash
+export OPENAI_API_KEY="sk-..."
+export OPENAI_MODEL="gpt-4o-mini"
 export LOG_LEVEL=DEBUG
 ethicist-mcp
 ```
