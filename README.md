@@ -129,20 +129,20 @@ Add to your MCP client configuration (e.g., Claude Desktop):
 {
   "mcpServers": {
     "ethicist": {
-      "command": "ethicist-mcp"
+      "command": "uv",
+      "args": ["run", "python", "-m", "ethicist_mcp.server"]
     }
   }
 }
 ```
 
-Or with Python path:
+If you have the package installed globally (e.g., via `pip install -e .`), you can alternatively configure it with the direct entry point:
 
 ```json
 {
   "mcpServers": {
     "ethicist": {
-      "command": "python",
-      "args": ["-m", "ethicist_mcp.server"]
+      "command": "ethicist-mcp"
     }
   }
 }
