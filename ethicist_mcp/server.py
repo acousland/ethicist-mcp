@@ -748,7 +748,7 @@ Please help me assess each risk category and recommend mitigations."""
         raise ValueError(f"Unknown prompt: {name}")
 
 
-async def main():
+async def async_main():
     """Main entry point for the MCP server."""
     logger.info("Starting Ethicist MCP Server")
     
@@ -762,5 +762,10 @@ async def main():
         )
 
 
+def main():
+    """Synchronous entry point for command-line usage."""
+    asyncio.run(async_main())
+
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    main()
