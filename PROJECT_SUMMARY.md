@@ -75,6 +75,7 @@ ethicist-mcp/
 │   └── http_server.py       # HTTP transport implementation
 ├── pyproject.toml           # Python project configuration
 ├── requirements.txt         # Dependencies
+├── uv.lock                  # Resolved dependency lockfile (uv)
 ├── README.md               # Main documentation
 ├── QUICKSTART.md           # Quick start guide
 ├── EXAMPLES.md             # Usage examples
@@ -89,8 +90,8 @@ ethicist-mcp/
 
 ### For End Users
 
-1. Install the package: `pip install -e .`
-2. Run the server: `ethicist-mcp`
+1. Sync dependencies: `uv sync --python 3.10`
+2. Run the server: `uv run ethicist-mcp`
 3. Connect from MCP clients (e.g., Claude Desktop)
 4. Use ethical analysis tools in conversations
 
@@ -131,9 +132,8 @@ Returns comprehensive ethical analysis using multiple philosophical frameworks.
 ```bash
 git clone https://github.com/acousland/ethicist-mcp.git
 cd ethicist-mcp
-pip install -r requirements.txt
-pip install -e .
-ethicist-mcp
+uv sync --python 3.10
+uv run ethicist-mcp
 ```
 
 ## Integration
@@ -146,8 +146,8 @@ Add to `claude_desktop_config.json`:
 {
   "mcpServers": {
     "ethicist": {
-      "command": "python",
-      "args": ["-m", "ethicist_mcp.server"]
+      "command": "uv",
+      "args": ["run", "python", "-m", "ethicist_mcp.server"]
     }
   }
 }

@@ -43,8 +43,31 @@ Structured prompts to guide ethical reasoning:
 
 - Python 3.10 or higher
 - pip package manager
+- [uv](https://docs.astral.sh/uv/) CLI (optional, recommended for environment management)
 
-### Install from Source
+### Install with uv (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/acousland/ethicist-mcp.git
+cd ethicist-mcp
+
+# Create a virtual environment pinned by uv.lock
+uv sync --python 3.10
+
+# Activate the environment if you prefer using python directly
+source .venv/bin/activate  # on macOS/Linux
+# .venv\Scripts\activate   # on Windows PowerShell
+```
+
+Once synced you can execute any script with isolated dependencies:
+
+```bash
+uv run ethicist-mcp
+uv run python -m ethicist_mcp.server
+```
+
+### Install from Source with pip
 
 ```bash
 # Clone the repository
@@ -61,6 +84,10 @@ pip install -e .
 ### Install Dependencies Only
 
 ```bash
+# Using uv
+uv pip install mcp httpx pydantic
+
+# Using pip
 pip install mcp httpx pydantic
 ```
 

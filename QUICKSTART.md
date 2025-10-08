@@ -9,21 +9,18 @@ Get started with the Ethicist MCP Server in minutes!
 git clone https://github.com/acousland/ethicist-mcp.git
 cd ethicist-mcp
 
-# Install dependencies
-pip install -r requirements.txt
-
-# Install the package
-pip install -e .
+# Create an isolated environment using uv.lock
+uv sync --python 3.10
 ```
 
 ## Verify Installation
 
 ```bash
 # Run the demo
-python demo.py
+uv run python demo.py
 
 # Or run tests
-python test_server.py
+uv run python test_server.py
 ```
 
 ## Basic Usage
@@ -31,13 +28,13 @@ python test_server.py
 ### 1. Run the Server (Stdio Transport)
 
 ```bash
-ethicist-mcp
+uv run ethicist-mcp
 ```
 
 Or:
 
 ```bash
-python -m ethicist_mcp.server
+uv run python -m ethicist_mcp.server
 ```
 
 ### 2. Use in Claude Desktop
@@ -50,8 +47,8 @@ Add to your Claude Desktop configuration file:
 {
   "mcpServers": {
     "ethicist": {
-      "command": "python",
-      "args": ["-m", "ethicist_mcp.server"]
+      "command": "uv",
+      "args": ["run", "python", "-m", "ethicist_mcp.server"]
     }
   }
 }
@@ -88,23 +85,26 @@ See [EXAMPLES.md](EXAMPLES.md) for detailed usage examples of all tools.
 - Read the [README.md](README.md) for full documentation
 - Explore [EXAMPLES.md](EXAMPLES.md) for practical use cases
 - Check [CONFIGURATION.md](CONFIGURATION.md) for advanced setup
-- Run `python demo.py` to see all features in action
+- Run `uv run python demo.py` to see all features in action
 
 ## Troubleshooting
 
 **Issue**: `ethicist-mcp` command not found
 
-**Solution**: Make sure the package is installed and your PATH includes the pip bin directory:
+**Solution**: Use `uv run ethicist-mcp` (preferred) or ensure the editable install is on your PATH:
 ```bash
+uv sync --python 3.10
+uv run ethicist-mcp
+# or (pip fallback)
 pip install -e .
-# or
-python -m ethicist_mcp.server
 ```
 
 **Issue**: Import errors
 
-**Solution**: Install all dependencies:
+**Solution**: Recreate the environment:
 ```bash
+uv sync --python 3.10
+# or (pip fallback)
 pip install -r requirements.txt
 ```
 

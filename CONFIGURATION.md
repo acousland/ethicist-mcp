@@ -29,6 +29,19 @@ Or using the full Python path:
 }
 ```
 
+Using a uv-managed environment:
+
+```json
+{
+  "mcpServers": {
+    "ethicist": {
+      "command": "uv",
+      "args": ["run", "python", "-m", "ethicist_mcp.server"]
+    }
+  }
+}
+```
+
 ## Configuration File Location
 
 ### macOS
