@@ -9,6 +9,7 @@ import asyncio
 import json
 import logging
 import os
+from pathlib import Path
 from typing import Any, Sequence
 
 from mcp.server import Server
@@ -494,6 +495,20 @@ async def list_tools() -> list[Tool]:
                 },
                 "required": ["system_type"]
             }
+        ),
+        Tool(
+            name="repugnance-infer",
+            description="Infer a repugnance-to-automate score for a supplied job title using deterministic heuristics",
+            inputSchema={
+                "type": "object",
+                "properties": {
+                    "job_title": {
+                        "type": "string",
+                        "description": "Job title to evaluate for moral repugnance when automated"
+                    }
+                },
+                "required": ["job_title"]
+            }
         )
     ]
 
@@ -669,7 +684,68 @@ async def call_tool(name: str, arguments: Any) -> Sequence[TextContent | ImageCo
         
         assessment = await _generate_openai_response("Transparency assessment", user_prompt)
         return [TextContent(type="text", text=assessment)]
-    
+
+    elif name == "repugnance-infer":
+        job_title = arguments.get("job_title")
+        if not job_title:
+            return [TextContent(type="text", text="Warning: The 'job_title' argument is required.")]
+
+        script_path = Path(__file__).resolve().parent.parent / "repugnance-infer.js"
+        if not script_path.exists():
+            logger.error("Repugnance inference runtime missing at %s", script_path)
+            return [TextContent(
+                type="text",
+                text="Warning: Repugnance inference runtime unavailable. Ensure 'repugnance-infer.js' is present."
+            )]
+
+        try:
+            process = await asyncio.create_subprocess_exec(
+                "node",
+                str(script_path),
+                str(job_title),
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            stdout, stderr = await process.communicate()
+        except FileNotFoundError:
+            logger.exception("Node.js executable not found when invoking repugnance tool.")
+            return [TextContent(
+                type="text",
+                text="Warning: Node.js is required to run repugnance inference but was not found on PATH."
+            )]
+
+        if process.returncode != 0:
+            logger.error(
+                "Repugnance inference process returned %s. stderr: %s",
+                process.returncode,
+                stderr.decode(errors="ignore")
+            )
+            return [TextContent(
+                type="text",
+                text=(
+                    "Warning: Repugnance inference failed to execute.\n\n"
+                    f"Job title: {job_title}\n"
+                    f"Exit code: {process.returncode}\n"
+                    f"Details: {stderr.decode(errors='ignore') or 'No diagnostics provided.'}"
+                )
+            )]
+
+        try:
+            payload = json.loads(stdout.decode())
+        except json.JSONDecodeError as exc:
+            logger.error("Failed to decode repugnance inference output: %s", exc)
+            logger.debug("Raw output: %s", stdout.decode(errors="ignore"))
+            return [TextContent(
+                type="text",
+                text=(
+                    "Warning: Repugnance inference returned invalid JSON. "
+                    "Check server logs for details."
+                )
+            )]
+
+        response_text = json.dumps(payload, indent=2)
+        return [TextContent(type="text", text=f"```json\n{response_text}\n```")]
+
     else:
         return [TextContent(type="text", text=f"Unknown tool: {name}")]
 
